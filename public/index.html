@@ -16,6 +16,25 @@
     --text-dim: rgba(255,255,255,0.12);
     --text-idle: rgba(255,255,255,0.18);
     --error: #e04040;
+    --input-border: rgba(255,255,255,0.15);
+    --input-border-focus: rgba(255,255,255,0.5);
+    --toast-bg: rgba(255,255,255,0.1);
+    --icon-muted: rgba(255,255,255,0.35);
+    --icon-hover: rgba(255,255,255,0.06);
+  }
+
+  [data-theme="light"] {
+    --bg: #f2f0eb;
+    --text-primary: #1a1a1a;
+    --text-muted: rgba(0,0,0,0.35);
+    --text-dim: rgba(0,0,0,0.12);
+    --text-idle: rgba(0,0,0,0.18);
+    --error: #d32f2f;
+    --input-border: rgba(0,0,0,0.15);
+    --input-border-focus: rgba(0,0,0,0.5);
+    --toast-bg: rgba(0,0,0,0.08);
+    --icon-muted: rgba(0,0,0,0.35);
+    --icon-hover: rgba(0,0,0,0.06);
   }
 
   html, body {
@@ -25,6 +44,7 @@
     color: var(--text-primary);
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
+    transition: background 0.5s ease, color 0.5s ease;
   }
 
   .app {
@@ -48,7 +68,7 @@
     border-radius: 8px;
     transition: background 0.2s;
   }
-  .kebab:hover { background: rgba(255,255,255,0.06); }
+  .kebab:hover { background: var(--icon-hover); }
   .kebab span {
     display: block;
     width: 4px;
@@ -59,6 +79,79 @@
   }
   .kebab:hover span { background: var(--text-primary); }
 
+  /* ── Particles Container ── */
+  .particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  /* ── Rain ── */
+  .rain-drop {
+    position: absolute;
+    top: -40px;
+    width: 2px;
+    height: 18px;
+    background: linear-gradient(to bottom, transparent, var(--text-muted));
+    border-radius: 0 0 2px 2px;
+    opacity: 0;
+    animation: rainFall linear infinite;
+  }
+
+  @keyframes rainFall {
+    0% {
+      opacity: 0;
+      transform: translateY(-40px);
+    }
+    10% {
+      opacity: 0.7;
+    }
+    90% {
+      opacity: 0.7;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(105vh);
+    }
+  }
+
+  /* ── Snow ── */
+  .snow-flake {
+    position: absolute;
+    top: -20px;
+    width: 6px;
+    height: 6px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    opacity: 0;
+    animation: snowFall linear infinite;
+  }
+
+  @keyframes snowFall {
+    0% {
+      opacity: 0;
+      transform: translateY(-20px) translateX(0px);
+    }
+    10% {
+      opacity: 0.6;
+    }
+    50% {
+      transform: translateY(50vh) translateX(30px);
+    }
+    90% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(105vh) translateX(-10px);
+    }
+  }
+
   /* ── Main Display ── */
   .display {
     flex: 1;
@@ -66,6 +159,8 @@
     align-items: center;
     justify-content: center;
     padding: 60px 40px;
+    position: relative;
+    z-index: 1;
   }
 
   .message {
@@ -79,7 +174,8 @@
     opacity: 0;
     transform: scale(0.92);
     transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+                transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+                color 0.5s ease;
   }
   .message.visible {
     opacity: 1;
@@ -103,6 +199,8 @@
     flex-direction: column;
     align-items: center;
     gap: 12px;
+    position: relative;
+    z-index: 1;
   }
 
   .status {
@@ -112,7 +210,7 @@
     font-size: 13px;
     color: var(--text-muted);
     height: 18px;
-    transition: opacity 0.3s;
+    transition: opacity 0.3s, color 0.5s ease;
   }
   .status svg {
     width: 15px;
@@ -122,6 +220,7 @@
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
+    transition: stroke 0.5s ease;
   }
 
   .input-row {
@@ -137,7 +236,7 @@
     flex: 1;
     background: transparent;
     border: none;
-    border-bottom: 1px solid rgba(255,255,255,0.15);
+    border-bottom: 1px solid var(--input-border);
     color: var(--text-primary);
     font-family: 'Noto Sans KR', sans-serif;
     font-size: 15px;
@@ -151,7 +250,7 @@
     font-weight: 400;
   }
   .chat-input:focus {
-    border-color: rgba(255,255,255,0.5);
+    border-color: var(--input-border-focus);
   }
   .chat-input.error {
     color: var(--error);
@@ -190,6 +289,49 @@
     width: 20px;
     height: 20px;
     fill: var(--text-primary);
+    transition: fill 0.5s ease;
+  }
+
+  /* ── Theme & Weather Bar ── */
+  .setting-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding-top: 12px;
+    margin-top: 4px;
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .setting-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--input-border);
+    flex-shrink: 0;
+  }
+
+  .setting-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s, transform 0.15s;
+    color: var(--icon-muted);
+  }
+  .setting-btn:hover { background: var(--icon-hover); }
+  .setting-btn:active { transform: scale(0.9); }
+  .setting-btn svg {
+    width: 22px;
+    height: 22px;
+    transition: color 0.3s ease;
+  }
+  .setting-btn.active {
+    color: var(--text-primary);
   }
 
   /* ── Toast ── */
@@ -198,7 +340,7 @@
     top: 20px;
     left: 50%;
     transform: translateX(-50%) translateY(-60px);
-    background: rgba(255,255,255,0.1);
+    background: var(--toast-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     color: var(--text-primary);
@@ -206,7 +348,7 @@
     padding: 10px 20px;
     border-radius: 20px;
     opacity: 0;
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s, color 0.5s ease;
     pointer-events: none;
     z-index: 100;
   }
@@ -215,19 +357,7 @@
     opacity: 1;
   }
 
-  /* ── Connection status ── */
-  .connection-dot {
-    position: absolute;
-    top: 24px;
-    right: 20px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #444;
-    transition: background 0.3s;
-  }
-  .connection-dot.connected { background: #4ade80; }
-  .connection-dot.disconnected { background: #ef4444; }
+
 </style>
 </head>
 <body>
@@ -237,7 +367,8 @@
     <span></span><span></span><span></span>
   </div>
 
-  <div class="connection-dot" id="connectionDot" title="연결 상태"></div>
+  <!-- Particles -->
+  <div class="particles" id="particles"></div>
 
   <div class="display">
     <div class="message idle visible" id="message">조용하네요...</div>
@@ -264,6 +395,28 @@
         </svg>
       </button>
     </div>
+
+    <!-- Theme & Weather Bar -->
+    <div class="setting-bar">
+      <!-- Sun (Light mode) -->
+      <button class="setting-btn" id="btnLight" title="라이트 모드">
+        <svg viewBox="0 0 32 32" fill="none"><path d="M16 5.33335V2.66669M16 26.6667V29.3334M8.5523 8.5523L6.66669 6.66669M23.6374 23.6374L25.523 25.523M5.33335 16H2.66669M26.6667 16H29.3334M23.638 8.5523L25.5237 6.66669M8.55296 23.6374L6.66734 25.523M16 22.6667C12.3181 22.6667 9.33335 19.6819 9.33335 16C9.33335 12.3181 12.3181 9.33335 16 9.33335C19.6819 9.33335 22.6667 12.3181 22.6667 16C22.6667 19.6819 19.6819 22.6667 16 22.6667Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <!-- Moon (Dark mode) -->
+      <button class="setting-btn active" id="btnDark" title="다크 모드">
+        <svg viewBox="0 0 26 26" fill="none"><path d="M9 4.48568C9 11.1131 14.3726 16.4857 21 16.4857C22.2123 16.4857 23.3827 16.3064 24.4859 15.972C22.9924 20.8994 18.4151 24.4855 13 24.4855C6.37258 24.4855 1 19.1133 1 12.4859C1 7.07079 4.58677 2.49345 9.51414 1C9.17978 2.10316 9 3.27333 9 4.48568Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <!-- Divider -->
+      <div class="setting-divider"></div>
+      <!-- Rain -->
+      <button class="setting-btn" id="btnRain" title="비">
+        <svg viewBox="0 0 32 32" fill="none"><path d="M21.3336 17.8464C21.3336 19.4785 20.7014 21.0437 19.5762 22.1978C18.9374 22.853 18.1692 23.3455 17.3334 23.6486M25.3334 18.2564C25.3334 9.4872 16 2.66669 16 2.66669C16 2.66669 6.66669 9.4872 6.66669 18.2564C6.66669 20.8406 7.65002 23.3191 9.40036 25.1464C11.1507 26.9737 13.5248 27.9992 16.0001 27.9992C18.4755 27.9992 20.8493 26.9731 22.5996 25.1459C24.35 23.3186 25.3334 20.8406 25.3334 18.2564Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <!-- Snow -->
+      <button class="setting-btn" id="btnSnow" title="눈">
+        <svg viewBox="0 0 32 32" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M13.9944 16.0012L8.88094 18.992L4.82766 17.1314L3.99561 18.9618L6.76174 20.2315L5.24022 21.1214L6.2305 22.859L7.75177 21.9693L7.45421 25.0305L9.43493 25.2156L9.87098 20.7298L14.9868 17.7376V23.7528L11.3669 26.3801L12.5417 27.9988L14.9868 26.2241V28H16.9868V26.224L19.4321 27.9988L20.6069 26.3801L16.9868 23.7527V17.7514L22.1141 20.7503L22.5502 25.2367L24.531 25.0515L24.2333 21.9898L25.7549 22.8798L26.7452 21.1422L25.2239 20.2523L27.9896 18.9828L27.1575 17.1525L23.1047 19.0128L17.9556 16.0012L23.0888 12.9988L27.1684 14.8715L28.0005 13.0412L25.208 11.7593L26.7472 10.859L25.757 9.12142L24.2471 10.0045L24.5419 6.97248L22.5611 6.78729L22.1279 11.244L16.9868 14.251V8.26755L20.6301 5.62327L19.4554 4.00466L16.9868 5.79629V4H14.9868V5.76246L12.565 4.00466L11.3902 5.62327L14.9868 8.23371V14.2648L9.88669 11.2818L9.44778 6.7665L7.46706 6.95168L7.76749 10.0423L6.2285 9.14217L5.23821 10.8798L6.74798 11.7628L4.00846 13.0204L4.84051 14.8507L8.86719 13.0023L13.9944 16.0012Z" fill="currentColor"/></svg>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -276,30 +429,104 @@
   const clearBtn = document.getElementById('clearBtn');
   const statusText = document.getElementById('statusText');
   const toast = document.getElementById('toast');
-  const connectionDot = document.getElementById('connectionDot');
+  const particlesEl = document.getElementById('particles');
+
+  const btnLight = document.getElementById('btnLight');
+  const btnDark = document.getElementById('btnDark');
+  const btnRain = document.getElementById('btnRain');
+  const btnSnow = document.getElementById('btnSnow');
 
   const MAX_CHARS = 20;
   let ws = null;
   let myQueuePosition = -1;
+  let currentWeather = 'none'; // 'none', 'rain', 'snow'
+
+  // ── Theme ──
+  function setTheme(theme) {
+    if (theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      btnLight.classList.add('active');
+      btnDark.classList.remove('active');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      btnLight.classList.remove('active');
+      btnDark.classList.add('active');
+    }
+  }
+
+  btnLight.addEventListener('click', () => setTheme('light'));
+  btnDark.addEventListener('click', () => setTheme('dark'));
+
+  // ── Weather Particles ──
+  function clearParticles() {
+    particlesEl.innerHTML = '';
+    currentWeather = 'none';
+    btnRain.classList.remove('active');
+    btnSnow.classList.remove('active');
+  }
+
+  function createRain() {
+    clearParticles();
+    currentWeather = 'rain';
+    btnRain.classList.add('active');
+
+    for (let i = 0; i < 10; i++) {
+      const drop = document.createElement('div');
+      drop.className = 'rain-drop';
+      drop.style.left = (Math.random() * 100) + '%';
+      drop.style.animationDuration = (1.2 + Math.random() * 0.8) + 's';
+      drop.style.animationDelay = (Math.random() * 2) + 's';
+      drop.style.height = (14 + Math.random() * 10) + 'px';
+      particlesEl.appendChild(drop);
+    }
+  }
+
+  function createSnow() {
+    clearParticles();
+    currentWeather = 'snow';
+    btnSnow.classList.add('active');
+
+    for (let i = 0; i < 10; i++) {
+      const flake = document.createElement('div');
+      flake.className = 'snow-flake';
+      flake.style.left = (Math.random() * 100) + '%';
+      flake.style.animationDuration = (5 + Math.random() * 4) + 's';
+      flake.style.animationDelay = (Math.random() * 5) + 's';
+      const size = 4 + Math.random() * 5;
+      flake.style.width = size + 'px';
+      flake.style.height = size + 'px';
+      particlesEl.appendChild(flake);
+    }
+  }
+
+  btnRain.addEventListener('click', () => {
+    if (currentWeather === 'rain') {
+      clearParticles();
+    } else {
+      createRain();
+    }
+  });
+
+  btnSnow.addEventListener('click', () => {
+    if (currentWeather === 'snow') {
+      clearParticles();
+    } else {
+      createSnow();
+    }
+  });
 
   // ── WebSocket connection ──
   function connect() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${protocol}//${location.host}`);
 
-    ws.onopen = () => {
-      connectionDot.className = 'connection-dot connected';
-    };
+    ws.onopen = () => {};
 
     ws.onclose = () => {
-      connectionDot.className = 'connection-dot disconnected';
-      // Reconnect after 2 seconds
       setTimeout(connect, 2000);
     };
 
-    ws.onerror = () => {
-      connectionDot.className = 'connection-dot disconnected';
-    };
+    ws.onerror = () => {};
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -308,24 +535,19 @@
         case 'show':
           showMessage(data.text);
           break;
-
         case 'hide':
           hideMessage();
           break;
-
         case 'idle':
           showIdle();
           myQueuePosition = -1;
           updateStatus();
           break;
-
         case 'queue_position':
           myQueuePosition = data.position;
           updateStatus();
           break;
-
         case 'status':
-          // Initial state when connecting
           if (!data.playing) showIdle();
           break;
       }
