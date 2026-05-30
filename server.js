@@ -7,20 +7,20 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Message queue ──
 let queue = [];
 let isPlaying = false;
-let playTimeout = null;
 let autoTimer = null;
-let autoChaining = false;
-const AUTO_INTERVAL = 5000; // 5초 동안 조용하면 자동 메시지
+
+const AUTO_INTERVAL = 5000;
+const DISPLAY_TIME = 5000;
+const EXIT_DELAY = 400;
 
 // ── Auto messages ──
 const autoMessages = [
-  "안녕하세요..?","뭐지?","여기 뭐하는 곳이지?","신기하네??","와 이거 무야","헐",
+  "안녕하세요..?","뭐지?","여기 뭐하는 곳이지?","신기하네??","와 이거 뭐야","헐",
   "누가 보고 있나??","누가 보구 있음???","이거 진짜임???????","사람 있나요??",
   "이거 되는건가","오 된다","개신깈ㅋㅋ","이거 누가하냐 ㅋㅋㅋㅋㅋ",
   "햄버거vs치킨","아 부장 뭐라카노","신기하다ㅋㅋㅋㅋㅋ","신기한 사이트 발견ㅋㅋ",
@@ -89,24 +89,38 @@ function getRandomMessage() {
   return autoMessages[Math.floor(Math.random() * autoMessages.length)];
 }
 
+function createAutoMessage() {
+  return {
+    text: getRandomMessage(),
+    id: 'auto_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+    auto: true
+  };
+}
+
+// 1~12개지만 너무 기계적으로 균등하지 않게 분포
+function getRandomBeforeCount() {
+  const r = Math.random();
+
+  if (r < 0.15) return 1;                              // 15%
+  if (r < 0.40) return Math.floor(Math.random() * 3) + 2; // 2~4
+  if (r < 0.75) return Math.floor(Math.random() * 4) + 5; // 5~8
+  return Math.floor(Math.random() * 4) + 9;               // 9~12
+}
+
 function resetAutoTimer() {
   if (autoTimer) clearTimeout(autoTimer);
-  autoChaining = false;
+
   autoTimer = setTimeout(() => {
     if (!isPlaying && queue.length === 0) {
-      autoChaining = true;
-      const text = getRandomMessage();
-      const id = 'auto_' + Date.now();
-      queue.push({ text, id });
+      queue.push(createAutoMessage());
       playNext();
     }
   }, AUTO_INTERVAL);
 }
 
-
-// Broadcast to all connected clients
 function broadcast(data) {
   const msg = JSON.stringify(data);
+
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(msg);
@@ -114,64 +128,63 @@ function broadcast(data) {
   });
 }
 
-// Play next message in queue
-function playNext() {
-  if (queue.length === 0) {
-    if (autoChaining) {
-      // 자동 메시지 연속 재생
-      const text = getRandomMessage();
-      const id = 'auto_' + Date.now();
-      queue.push({ text, id });
-    } else {
-      isPlaying = false;
-      broadcast({ type: 'idle' });
-      resetAutoTimer();
-      return;
-    }
-  }
-
-  isPlaying = true;
-  const message = queue.shift();
-
-  // Tell everyone: show this message + update queue positions
-  broadcast({ type: 'show', text: message.text });
-
-  // Notify each client of their updated queue position
-  notifyQueuePositions();
-
-  // After 5 seconds, move to next
-  playTimeout = setTimeout(() => {
-    broadcast({ type: 'hide' });
-    setTimeout(() => playNext(), 400); // wait for exit animation
-  }, 5000);
-}
-
-// Notify each client of their position in queue
 function notifyQueuePositions() {
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN && client.queueId) {
       const position = queue.findIndex(m => m.id === client.queueId);
+
       if (position >= 0) {
-        client.send(JSON.stringify({ 
-          type: 'queue_position', 
-          position: position + 1 
+        client.send(JSON.stringify({
+          type: 'queue_position',
+          position: position + 1
         }));
       } else {
         client.queueId = null;
-        client.send(JSON.stringify({ 
-          type: 'queue_position', 
-          position: -1 
+        client.send(JSON.stringify({
+          type: 'queue_position',
+          position: -1
         }));
       }
     }
   });
 }
 
+function playNext() {
+  if (queue.length === 0) {
+    isPlaying = false;
+    broadcast({ type: 'idle' });
+    resetAutoTimer();
+    return;
+  }
+
+  isPlaying = true;
+
+  const message = queue.shift();
+
+  broadcast({
+    type: 'show',
+    text: message.text
+  });
+
+  notifyQueuePositions();
+
+  setTimeout(() => {
+    broadcast({ type: 'hide' });
+
+    setTimeout(() => {
+      playNext();
+    }, EXIT_DELAY);
+  }, DISPLAY_TIME);
+}
+
 // ── WebSocket connections ──
 wss.on('connection', (ws) => {
-  // Send current state to new client
   if (isPlaying) {
-    ws.send(JSON.stringify({ type: 'status', playing: true, queueLength: queue.length }));
+    ws.send(JSON.stringify({
+      type: 'status',
+      playing: true,
+      queueLength: queue.length
+    }));
   } else {
     ws.send(JSON.stringify({ type: 'idle' }));
   }
@@ -185,18 +198,35 @@ wss.on('connection', (ws) => {
         if (!text) return;
 
         const id = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-        queue.push({ text, id });
 
-        // Track this client's message
+        // 같은 사용자가 여러 개를 빠르게 보내면 마지막 것만 추적
         ws.queueId = id;
 
-        // Tell this client their position
-        const position = queue.findIndex(m => m.id === id) + 1;
-        ws.send(JSON.stringify({ type: 'queue_position', position }));
+        // 사용자 메시지 앞에 자동 메시지 1~12개 삽입
+        const beforeCount = getRandomBeforeCount();
 
-        // Start playing if not already
-        if (!isPlaying) playNext();
-        autoChaining = false;
+        for (let i = 0; i < beforeCount; i++) {
+          queue.push(createAutoMessage());
+        }
+
+        // 그 뒤에 사용자 메시지 삽입
+        queue.push({
+          text,
+          id,
+          auto: false
+        });
+
+        const position = queue.findIndex(m => m.id === id) + 1;
+
+        ws.send(JSON.stringify({
+          type: 'queue_position',
+          position
+        }));
+
+        if (!isPlaying) {
+          playNext();
+        }
+
         resetAutoTimer();
       }
     } catch (e) {
@@ -205,15 +235,15 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    // Remove this client's pending messages from queue
     if (ws.queueId) {
       queue = queue.filter(m => m.id !== ws.queueId);
+      notifyQueuePositions();
     }
   });
 });
 
-// ── Start server ──
 const PORT = process.env.PORT || 3000;
+
 server.listen(PORT, () => {
   console.log(`Holler server running on port ${PORT}`);
   resetAutoTimer();
