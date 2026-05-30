@@ -17,9 +17,8 @@ let playTimeout = null;
 let autoTimer = null;
 
 function getRandomDelay() {
-  // 1~12칸 뒤에 랜덤 (1칸 = 약 5.4초)
-  const slots = Math.floor(Math.random() * 12) + 1;
-  return slots * 5400;
+  // 3~15초 사이 랜덤 대기
+  return (Math.random() * 12000) + 3000;
 }
 
 // ── Auto messages ──
