@@ -13,10 +13,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 let queue = [];
 let isPlaying = false;
 let autoTimer = null;
+let autoChaining = false;
 
-const AUTO_INTERVAL = 5000;
-const DISPLAY_TIME = 5000;
-const EXIT_DELAY = 400;
+const AUTO_INTERVAL = 5000; // 5초 조용하면 자동 시작
+const DISPLAY_TIME = 5000;  // 메시지 표시 시간
+const EXIT_DELAY = 400;     // 사라지는 애니메이션 대기
 
 // ── Auto messages ──
 const autoMessages = [
@@ -97,11 +98,19 @@ function createAutoMessage() {
   };
 }
 
-// 1~12개지만 너무 기계적으로 균등하지 않게 분포
+function createUserMessage(text) {
+  return {
+    text,
+    id: Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+    auto: false
+  };
+}
+
+// 유저 메시지가 몇 번째 뒤에 나올지 결정
 function getRandomBeforeCount() {
   const r = Math.random();
 
-  if (r < 0.15) return 1;                              // 15%
+  if (r < 0.15) return 1;                                // 15%
   if (r < 0.40) return Math.floor(Math.random() * 3) + 2; // 2~4
   if (r < 0.75) return Math.floor(Math.random() * 4) + 5; // 5~8
   return Math.floor(Math.random() * 4) + 9;               // 9~12
@@ -110,8 +119,11 @@ function getRandomBeforeCount() {
 function resetAutoTimer() {
   if (autoTimer) clearTimeout(autoTimer);
 
+  autoChaining = false;
+
   autoTimer = setTimeout(() => {
     if (!isPlaying && queue.length === 0) {
+      autoChaining = true;
       queue.push(createAutoMessage());
       playNext();
     }
@@ -150,11 +162,16 @@ function notifyQueuePositions() {
 }
 
 function playNext() {
+  // 큐가 비었는데 autoChaining이 true면 자동 메시지를 계속 추가
   if (queue.length === 0) {
-    isPlaying = false;
-    broadcast({ type: 'idle' });
-    resetAutoTimer();
-    return;
+    if (autoChaining) {
+      queue.push(createAutoMessage());
+    } else {
+      isPlaying = false;
+      broadcast({ type: 'idle' });
+      resetAutoTimer();
+      return;
+    }
   }
 
   isPlaying = true;
@@ -197,37 +214,38 @@ wss.on('connection', (ws) => {
         const text = msg.text.trim().slice(0, 20);
         if (!text) return;
 
-        const id = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        // 유저가 입력하는 순간 자동 연속 모드 중단
+        autoChaining = false;
 
-        // 같은 사용자가 여러 개를 빠르게 보내면 마지막 것만 추적
-        ws.queueId = id;
+        if (autoTimer) {
+          clearTimeout(autoTimer);
+          autoTimer = null;
+        }
 
-        // 사용자 메시지 앞에 자동 메시지 1~12개 삽입
+        const userMessage = createUserMessage(text);
+        ws.queueId = userMessage.id;
+
+        // 유저 메시지 앞에 자동 메시지 1~12개 삽입
         const beforeCount = getRandomBeforeCount();
 
         for (let i = 0; i < beforeCount; i++) {
           queue.push(createAutoMessage());
         }
 
-        // 그 뒤에 사용자 메시지 삽입
-        queue.push({
-          text,
-          id,
-          auto: false
-        });
+        queue.push(userMessage);
 
-        const position = queue.findIndex(m => m.id === id) + 1;
+        const position = queue.findIndex(m => m.id === userMessage.id) + 1;
 
         ws.send(JSON.stringify({
           type: 'queue_position',
           position
         }));
 
+        notifyQueuePositions();
+
         if (!isPlaying) {
           playNext();
         }
-
-        resetAutoTimer();
       }
     } catch (e) {
       // ignore bad messages
