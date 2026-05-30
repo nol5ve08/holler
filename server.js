@@ -15,7 +15,7 @@ let queue = [];
 let isPlaying = false;
 let playTimeout = null;
 let autoTimer = null;
-const AUTO_INTERVAL = 10000; // 10초 동안 조용하면 자동 메시지
+const AUTO_INTERVAL = 5000; // 5초 동안 조용하면 자동 메시지
 
 // ── Auto messages ──
 const autoMessages = [
