@@ -15,8 +15,12 @@ let queue = [];
 let isPlaying = false;
 let playTimeout = null;
 let autoTimer = null;
-let autoChaining = false;
-const AUTO_INTERVAL = 5000; // 5초 동안 조용하면 자동 메시지
+
+function getRandomDelay() {
+  // 1~12칸 뒤에 랜덤 (1칸 = 약 5.4초)
+  const slots = Math.floor(Math.random() * 12) + 1;
+  return slots * 5400;
+}
 
 // ── Auto messages ──
 const autoMessages = [
@@ -91,16 +95,14 @@ function getRandomMessage() {
 
 function resetAutoTimer() {
   if (autoTimer) clearTimeout(autoTimer);
-  autoChaining = false;
   autoTimer = setTimeout(() => {
     if (!isPlaying && queue.length === 0) {
-      autoChaining = true;
       const text = getRandomMessage();
       const id = 'auto_' + Date.now();
       queue.push({ text, id });
       playNext();
     }
-  }, AUTO_INTERVAL);
+  }, getRandomDelay());
 }
 
 
@@ -117,17 +119,10 @@ function broadcast(data) {
 // Play next message in queue
 function playNext() {
   if (queue.length === 0) {
-    if (autoChaining) {
-      // 자동 메시지 연속 재생
-      const text = getRandomMessage();
-      const id = 'auto_' + Date.now();
-      queue.push({ text, id });
-    } else {
-      isPlaying = false;
-      broadcast({ type: 'idle' });
-      resetAutoTimer();
-      return;
-    }
+    isPlaying = false;
+    broadcast({ type: 'idle' });
+    resetAutoTimer();
+    return;
   }
 
   isPlaying = true;
@@ -196,7 +191,6 @@ wss.on('connection', (ws) => {
 
         // Start playing if not already
         if (!isPlaying) playNext();
-        autoChaining = false;
         resetAutoTimer();
       }
     } catch (e) {
