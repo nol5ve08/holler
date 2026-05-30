@@ -15,10 +15,16 @@ let queue = [];
 let isPlaying = false;
 let playTimeout = null;
 let autoTimer = null;
+let autoChaining = false;
 
-function getRandomDelay() {
-  // 3~15초 사이 랜덤 대기
-  return (Math.random() * 12000) + 3000;
+function getAutoDelay(afterUser) {
+  if (afterUser) {
+    // 유저 채팅 후: 5~15초 랜덤 대기
+    return (Math.random() * 10000) + 5000;
+  } else {
+    // 첫 시작: 5~10초 랜덤 대기
+    return (Math.random() * 5000) + 5000;
+  }
 }
 
 // ── Auto messages ──
@@ -92,16 +98,17 @@ function getRandomMessage() {
   return autoMessages[Math.floor(Math.random() * autoMessages.length)];
 }
 
-function resetAutoTimer() {
+function resetAutoTimer(afterUser) {
   if (autoTimer) clearTimeout(autoTimer);
   autoTimer = setTimeout(() => {
     if (!isPlaying && queue.length === 0) {
+      autoChaining = true;
       const text = getRandomMessage();
       const id = 'auto_' + Date.now();
       queue.push({ text, id });
       playNext();
     }
-  }, getRandomDelay());
+  }, getAutoDelay(afterUser));
 }
 
 
@@ -118,10 +125,17 @@ function broadcast(data) {
 // Play next message in queue
 function playNext() {
   if (queue.length === 0) {
-    isPlaying = false;
-    broadcast({ type: 'idle' });
-    resetAutoTimer();
-    return;
+    if (autoChaining) {
+      // 자동 메시지 연속: 바로 다음 메시지 추가
+      const text = getRandomMessage();
+      const id = 'auto_' + Date.now();
+      queue.push({ text, id });
+    } else {
+      isPlaying = false;
+      broadcast({ type: 'idle' });
+      resetAutoTimer(true);
+      return;
+    }
   }
 
   isPlaying = true;
@@ -190,7 +204,8 @@ wss.on('connection', (ws) => {
 
         // Start playing if not already
         if (!isPlaying) playNext();
-        resetAutoTimer();
+        autoChaining = false;
+        resetAutoTimer(true);
       }
     } catch (e) {
       // ignore bad messages
